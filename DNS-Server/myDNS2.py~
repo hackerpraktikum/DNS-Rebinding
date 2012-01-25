@@ -10,7 +10,7 @@ from scapy.all import sniff, send, IP, UDP, DNS, DNSRR, UDPerror
 
 attacker = "attacker.com"
 confusion = "confusion.attacker.com"
-attacker_ip = "10.10.42.12"
+attacker_ip = "10.10.42.102"
 victim = "10.10.42.11"
 dns_ttl = 1
 
