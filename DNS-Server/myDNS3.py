@@ -11,6 +11,9 @@ from scapy.all import sniff, send, IP, UDP, DNS, DNSRR, UDPerror
 fakedns_ip = "10.10.42.12"
 dns_ttl = 10000
 
+localhost = "192.168.169.138"#"172.0.0.1"
+listenall = False
+
 global first_request
 global dns_id
 
@@ -26,15 +29,13 @@ def dns_callback(pkt):
         if dns.qr:
             return dns.summary()
         else:
-            if dns.qd != None and dns_id != dns.id:
+            if dns.qd != None and dns_id != dns.id and (ip.dst == localhost or listenall==True):
                 
                 dns_id = dns.id
                 #authoritive answer only (aa=1)
                 answer = IP(dst=ip.src,src=ip.dst)/UDP(dport=ip.sport,sport=ip.dport)/DNS(id=dns.id,qr=1,aa=1,qd=dns.qd,an=DNSRR(rrname=dns.qd.qname, ttl=dns_ttl, rdata=fakedns_ip))
                 #nscount=1// gibt nur an, das der ns ein authoritve ist, rd=1 recursion desired, ra=1 recursion available, 
-                #answer authenticated bit set:
-                answer = IP(dst=ip.src,src=ip.dst)/UDP(dport=ip.sport,sport=ip.dport)/DNS(id=dns.id,qr=1,aa=1,z=2,qd=dns.qd,an=DNSRR(rrname=dns.qd.qname, ttl=dns_ttl, rdata=fakedns_ip))
-
+                
                 send(answer,loop=0)
 
                 return dns.summary()
